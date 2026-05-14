@@ -125,6 +125,17 @@ export default function Home() {
 
   useEffect(() => {
     setMounted(true);
+    
+    // Listen for biometric emergency triggers
+    const handleEmergency = (e: any) => {
+      if (e.detail?.active) {
+        setIsEmergencyMode(true);
+      } else {
+        setIsEmergencyMode(false);
+      }
+    };
+    window.addEventListener("v-emergency-trigger", handleEmergency as any);
+    return () => window.removeEventListener("v-emergency-trigger", handleEmergency as any);
   }, []);
 
   if (!mounted) return null;

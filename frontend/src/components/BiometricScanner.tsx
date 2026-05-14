@@ -85,6 +85,9 @@ export default function BiometricScanner() {
     }
   }, [cam.heartRate, cam.active, scanning]);
 
+  const [isFingerDetected, setIsFingerDetected] = useState(false);
+  const [scanCondition, setScanCondition] = useState<"safe" | "critical">("safe");
+  
   // Auto-stop and generate report after 20 seconds for "Rapid Scan"
   useEffect(() => {
     if (scanning && scanDuration >= 20) {
@@ -92,10 +95,20 @@ export default function BiometricScanner() {
     }
   }, [scanning, scanDuration]);
 
+  // Dispatch global emergency state
+  useEffect(() => {
+    if (scanning && scanCondition === "critical") {
+       window.dispatchEvent(new CustomEvent("v-emergency-trigger", { detail: { active: true } }));
+    } else if (!scanning) {
+       window.dispatchEvent(new CustomEvent("v-emergency-trigger", { detail: { active: false } }));
+    }
+  }, [scanning, scanCondition]);
+
   const startBluetooth = async () => {
     setScanMode("bluetooth");
     setReadings([]);
     setScanDuration(0);
+    setScanCondition(Math.random() > 0.7 ? "critical" : "safe");
     await ble.connect();
     setScanning(true);
   };
@@ -104,14 +117,28 @@ export default function BiometricScanner() {
     setScanMode("camera");
     setReadings([]);
     setScanDuration(0);
+    setScanCondition(Math.random() > 0.7 ? "critical" : "safe");
     if (videoRef.current && canvasRef.current) {
       await cam.start(videoRef.current, canvasRef.current);
-      setScanning(true);
+      // We don't start "scanning" (counting duration) until finger is detected
     }
   };
 
+  // Monitor camera for finger detection (checking for high red-channel saturation)
+  useEffect(() => {
+    if (scanMode === "camera" && cam.active && !scanning) {
+       // In a real app, cam.heartRate would be 0 until enough light is blocked
+       // We'll simulate finger detection when the signal starts coming in or via a UI prompt
+       if (cam.heartRate > 0) {
+          setIsFingerDetected(true);
+          setScanning(true);
+       }
+    }
+  }, [cam.heartRate, cam.active, scanMode, scanning]);
+
   const stopScan = async () => {
     setScanning(false);
+    setIsFingerDetected(false);
     if (scanMode === "bluetooth") ble.disconnect();
     if (scanMode === "camera") cam.stop();
 
@@ -122,8 +149,10 @@ export default function BiometricScanner() {
       const seed = Date.now() % 1000;
       const hour = new Date().getHours();
       
-      // Base metrics with high variance
-      const baseHR = ((hour > 22 || hour < 6) ? 52 : 68) + (Math.random() * 25) + (seed / 200);
+      // Base metrics based on scanCondition
+      let baseHR = (scanCondition === "critical") 
+        ? 110 + (Math.random() * 40) // High BPM for critical
+        : ((hour > 22 || hour < 6) ? 52 : 68) + (Math.random() * 25) + (seed / 200);
       
       for (let i = 0; i < 20; i++) {
         // Add "neural noise" to every single reading to ensure zero repetition
@@ -258,24 +287,32 @@ export default function BiometricScanner() {
 
       {/* Live Scan Results */}
       <AnimatePresence>
-        {scanning && (
+        {(scanMode !== "idle" && (cam.active || ble.connected)) && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="glass rounded-[48px] p-12 relative overflow-hidden"
+            className={`glass rounded-[48px] p-12 relative overflow-hidden transition-colors duration-1000 ${
+              scanCondition === "critical" && scanning ? "bg-v-red/5 border-v-red/20 shadow-[0_0_50px_rgba(255,34,68,0.1)]" : ""
+            }`}
           >
             <div className="absolute top-0 left-0 w-full h-1">
-              <div className="h-full bg-v-cyan animate-pulse" />
+              <div className={`h-full animate-pulse ${scanCondition === "critical" ? "bg-v-red" : "bg-v-cyan"}`} />
             </div>
 
             <div className="flex items-center justify-between mb-10">
               <div className="flex items-center gap-4">
-                <div className="w-3 h-3 rounded-full bg-v-red animate-pulse shadow-[0_0_15px_rgba(255,34,68,0.8)]" />
-                <span className="text-xs font-mono text-v-red uppercase tracking-[0.4em] font-bold">Live_Scan_Active</span>
+                <div className={`w-3 h-3 rounded-full animate-pulse shadow-[0_0_15px_rgba(255,34,68,0.8)] ${
+                   scanning ? "bg-v-red" : "bg-v-muted"
+                }`} />
+                <span className={`text-xs font-mono uppercase tracking-[0.4em] font-bold ${
+                   scanCondition === "critical" && scanning ? "text-v-red" : "text-v-cyan"
+                }`}>
+                   {!scanning ? "AWAITING_BIO_LINK" : scanCondition === "critical" ? "CRITICAL_ANOMALY" : "SYSTEM_STABLE"}
+                </span>
               </div>
               <div className="flex items-center gap-6">
-                <span className="text-xs font-mono text-v-muted">T-Minus: {20 - scanDuration}s</span>
+                {scanning && <span className="text-xs font-mono text-v-muted">T-Minus: {20 - scanDuration}s</span>}
                 <button
                   onClick={stopScan}
                   className="px-8 py-3 bg-v-red/20 text-v-red rounded-2xl text-xs font-mono uppercase tracking-widest hover:bg-v-red/30 transition-all"
@@ -285,23 +322,38 @@ export default function BiometricScanner() {
               </div>
             </div>
 
-            {/* Scan Progress Bar */}
-            <div className="w-full h-1 bg-white/5 rounded-full mb-12 overflow-hidden">
-               <motion.div 
-                  initial={{ width: 0 }}
-                  animate={{ width: `${(scanDuration / 20) * 100}%` }}
-                  className="h-full bg-gradient-to-r from-v-cyan via-v-blue to-v-cyan shadow-[0_0_15px_rgba(0,212,255,0.5)]"
-               />
-            </div>
-
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-              {/* Live BPM */}
-              <div className="glass rounded-[32px] p-8 text-center relative overflow-hidden">
-                <Heart className="text-v-red animate-heartbeat mx-auto mb-4" size={32} />
-                <div className="text-5xl font-black italic mb-2">{currentHR || "--"}</div>
-                <span className="text-[10px] font-mono text-v-muted uppercase tracking-widest">BPM_Live</span>
-                <div className="absolute inset-0 bg-v-red/5 animate-pulse pointer-events-none" />
+            {!scanning && scanMode === "camera" && (
+              <div className="py-20 text-center space-y-6">
+                 <div className="w-24 h-24 rounded-full border-2 border-dashed border-v-cyan/40 flex items-center justify-center mx-auto animate-spin-slow">
+                    <Fingerprint className="text-v-cyan" size={40} />
+                 </div>
+                 <h4 className="text-2xl font-black italic uppercase">Place Finger On Lens</h4>
+                 <p className="text-v-muted text-sm font-light">Bio-link initialization will start automatically upon contact.</p>
               </div>
+            )}
+
+            {scanning && (
+              <>
+                {/* Scan Progress Bar */}
+                <div className="w-full h-1 bg-white/5 rounded-full mb-12 overflow-hidden">
+                   <motion.div 
+                      initial={{ width: 0 }}
+                      animate={{ width: `${(scanDuration / 20) * 100}%` }}
+                      className={`h-full shadow-[0_0_15px_rgba(0,212,255,0.5)] ${
+                        scanCondition === "critical" ? "bg-v-red" : "bg-gradient-to-r from-v-cyan via-v-blue to-v-cyan"
+                      }`}
+                   />
+                </div>
+
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+                  {/* Live BPM */}
+                  <div className={`glass rounded-[32px] p-8 text-center relative overflow-hidden ${
+                    scanCondition === "critical" ? "border-v-red/20" : ""
+                  }`}>
+                    <Heart className={`${scanCondition === "critical" ? "text-v-red" : "text-v-red"} animate-heartbeat mx-auto mb-4`} size={32} />
+                    <div className={`text-5xl font-black italic mb-2 ${scanCondition === "critical" ? "text-v-red" : ""}`}>{currentHR || "--"}</div>
+                    <span className="text-[10px] font-mono text-v-muted uppercase tracking-widest">BPM_Live</span>
+                  </div>
 
               {/* HRV */}
               <div className="glass rounded-[32px] p-8 text-center">

@@ -15,7 +15,16 @@ const AI_RESPONSES: Record<string, string> = {
   pulse: "Cardiac rhythm detected. BPM: 72. Variability: 45ms. Sinus rhythm is consistent. No immediate cardiovascular risk detected.",
   risk: "Aggregating global health datasets... Neural risk assessment: 2.4%. All systems operating within standard deviations of optimal health.",
   sync: "Establishing clinical synchronization... Connection stable. Encrypted bio-data transmitted to medical node. Synchronization complete.",
-  nutrient: "Spectral analysis suggest a slight deficiency in Magnesium. Recommend dietary adjustment with leafy greens or specialized supplementation."
+  nutrient: "Spectral analysis suggest a slight deficiency in Magnesium. Recommend dietary adjustment with leafy greens or specialized supplementation.",
+  heart: "Cardiovascular Analysis: Potential detected markers for Hypertrophic Cardiomyopathy. Suggesting immediate Doppler Echo-cardiogram and beta-blocker protocol adjustment.",
+  diabetes: "Metabolic Profiling: Glucose spikes detected in recent telemetry. Analyzing insulin sensitivity node... Suggesting a continuous glucose monitor (CGM) link and low-GI nutritional recalibration.",
+  cancer: "Oncological Surveillance: Neural scan identifies abnormal cellular resonance in the lymphatic sector. Protocol alpha-1 initiated. Specialized biopsy recommended immediately.",
+  fever: "Thermodynamic Warning: System core temperature elevated to 39.2°C. Identifying viral/bacterial signatures... Initializing leukocyte optimization protocol. Hydrate with electrolytes immediately.",
+  covid: "Respiratory Scan: Viral RNA signature identified. Pulmonary efficiency reduced by 14%. Initializing cytokine storm prevention protocol. Quarantine mode active.",
+  flu: "Pathogen Alert: Influenza-type markers detected. Neural link indicates high systemic inflammation. Recommend rest and anti-viral synchronization.",
+  stroke: "Cerebrovascular Warning: Asymmetric neural firing detected in the left hemisphere. High risk of ischemic event. EMERGENCY: Dispatching neural-stenting drone and initiating immediate hospital sync.",
+  asthma: "Pulmonary Report: Bronchial constriction detected. Oxygen saturation at 91%. Activating inhaler synchronization node. Maintain deep-breathing protocols.",
+  liver: "Hepatic Diagnostics: Elevated enzyme resonance detected (ALT/AST). Potential toxic overload. Initiating detox-node link. Avoid ethanol-based substances for 72 hours."
 };
 
 export default function AIAssistant() {
