@@ -10,6 +10,28 @@
   --bg: #02040a;
 }
 
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(6, 182, 212, 0.2) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(6, 182, 212, 0.2);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(6, 182, 212, 0.5);
+}
+
 body {
   background: var(--bg);
   color: #f8fafc;
@@ -92,4 +114,17 @@ body {
   z-index: 999;
   transform: translate(-50%, -50%);
   mix-blend-mode: screen;
+}
+
+.text-glow-cyan {
+  text-shadow: 0 0 10px rgba(6, 182, 212, 0.5);
+}
+
+.text-glow-red {
+  text-shadow: 0 0 10px rgba(220, 38, 38, 0.5);
+}
+
+.bg-noise {
+  background-image: url("https://grainy-gradients.vercel.app/noise.svg");
+  filter: contrast(150%) brightness(1000%);
 }
