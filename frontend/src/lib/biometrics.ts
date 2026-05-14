@@ -26,17 +26,17 @@ export interface ScanReport {
 
 // --- Web Bluetooth Heart Rate Service ---
 export function useBluetoothHR() {
-  const [device, setDevice] = useState<BluetoothDevice | null>(null);
+  const [device, setDevice] = useState<any | null>(null);
   const [connected, setConnected] = useState(false);
   const [heartRate, setHeartRate] = useState(0);
   const [rrIntervals, setRrIntervals] = useState<number[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const characteristicRef = useRef<BluetoothRemoteGATTCharacteristic | null>(null);
+  const characteristicRef = useRef<any | null>(null);
 
   const connect = useCallback(async () => {
     try {
       setError(null);
-      const dev = await navigator.bluetooth.requestDevice({
+      const dev = await (navigator as any).bluetooth.requestDevice({
         filters: [{ services: ["heart_rate"] }],
         optionalServices: ["battery_service"],
       });
@@ -48,8 +48,8 @@ export function useBluetoothHR() {
       characteristicRef.current = characteristic;
 
       await characteristic.startNotifications();
-      characteristic.addEventListener("characteristicvaluechanged", (event: Event) => {
-        const value = (event.target as BluetoothRemoteGATTCharacteristic).value!;
+      characteristic.addEventListener("characteristicvaluechanged", (event: any) => {
+        const value = (event.target as any).value!;
         const flags = value.getUint8(0);
         const is16Bit = (flags & 0x01) !== 0;
         const hr = is16Bit ? value.getUint16(1, true) : value.getUint8(1);
