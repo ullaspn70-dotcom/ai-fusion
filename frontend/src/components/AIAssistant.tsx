@@ -68,53 +68,59 @@ export default function AIAssistant() {
     recognition.start();
   };
 
-  const handleSend = (textOverride?: string) => {
+  const handleSend = async (textOverride?: string) => {
     const textToSend = textOverride || input;
-    if (!textToSend.trim()) return;
+    if (!textToSend.trim() || isTyping) return;
     
-    const userMsg: Message = { id: Date.now().toString(), role: "user", text: textToSend };
+    const userMsg: Message = { id: `u-${Date.now()}`, role: "user", text: textToSend };
     setMessages(prev => [...prev, userMsg]);
     if (!textOverride) setInput("");
     setIsTyping(true);
 
-    // Advanced Neural Reasoning Logic
-    setTimeout(() => {
+    try {
+      // Precise Neural Delay for cinematic effect
+      await new Promise(resolve => setTimeout(resolve, 1200 + Math.random() * 800));
+
       let responseText = AI_RESPONSES.default;
       const lowerText = textToSend.toLowerCase();
       
-      // Multi-keyword semantic matching
+      // Multi-keyword semantic matching engine
       const matches = Object.keys(AI_RESPONSES).filter(key => lowerText.includes(key));
       if (matches.length > 0) {
-        // Prioritize the most specific match
         const bestMatch = matches.sort((a, b) => b.length - a.length)[0];
         responseText = AI_RESPONSES[bestMatch];
+      } else if (lowerText.includes("pain") || lowerText.includes("ache")) {
+        responseText = "Symptomatic localized discomfort detected. Cross-referencing neural pain-gate nodes... Suggesting an anti-inflammatory protocol and localized thermal regulation.";
+      } else if (lowerText.includes("help") || lowerText.includes("who")) {
+        responseText = "I am VITALIS_CORE, a decentralized biological intelligence node monitoring your physiological resonance.";
       } else {
-        // Fallback for general symptoms
-        if (lowerText.includes("pain") || lowerText.includes("ache")) {
-           responseText = "Symptomatic localized discomfort detected. Cross-referencing neural pain-gate nodes... Suggesting an anti-inflammatory protocol and localized thermal regulation (Cold Compress).";
-        } else if (lowerText.includes("help") || lowerText.includes("who")) {
-           responseText = "I am VITALIS_CORE, a decentralized biological intelligence node. I monitor your physiological resonance to ensure maximum longevity and metabolic efficiency.";
-        } else {
-           responseText = `Input registered: "${textToSend}". Neural cluster is currently aggregating specific data points. Preliminary analysis indicates a 98.4% alignment with baseline health markers. Please provide specific symptoms for deep-tissue diagnostic.`;
-        }
+        responseText = `VITALIS_CORE analysis: Input "${textToSend}" registered. Neural synchronization at 98.4%. Please provide specific biological markers for a deeper diagnostic.`;
       }
 
       const aiMsg: Message = { 
-        id: (Date.now() + 1).toString(), 
+        id: `a-${Date.now()}`, 
         role: "ai", 
         text: responseText
       };
+      
       setMessages(prev => [...prev, aiMsg]);
-      setIsTyping(false);
-
-      // Simple voice feedback if supported
+      
+      // Voice feedback with error safety
       if ('speechSynthesis' in window && !textOverride) {
-        const utterance = new SpeechSynthesisUtterance(responseText.substring(0, 100) + "...");
-        utterance.rate = 1.1;
-        utterance.pitch = 0.9;
-        window.speechSynthesis.speak(utterance);
+        try {
+          const utterance = new SpeechSynthesisUtterance(responseText.substring(0, 120));
+          utterance.rate = 1.05;
+          utterance.pitch = 0.95;
+          window.speechSynthesis.speak(utterance);
+        } catch (e) {
+          console.error("Speech Synthesis Error:", e);
+        }
       }
-    }, 1500);
+    } catch (err) {
+      console.error("Chatbot Core Error:", err);
+    } finally {
+      setIsTyping(false);
+    }
   };
 
   return (

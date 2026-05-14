@@ -91,6 +91,7 @@ export function useCameraHR() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [heartRate, setHeartRate] = useState(0);
+  const [isCovered, setIsCovered] = useState(false);
   const [active, setActive] = useState(false);
   const activeRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
@@ -146,6 +147,9 @@ export function useCameraHR() {
       }
       const avgGreen = greenSum / count;
       
+      // Auto-trigger when lens is covered (brightness drops significantly)
+      setIsCovered(avgGreen < 60);
+
       // Moving average filter to remove high-frequency noise
       signalBuffer.current.push(avgGreen);
       if (signalBuffer.current.length > 400) signalBuffer.current.shift();

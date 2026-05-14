@@ -128,13 +128,13 @@ export default function BiometricScanner() {
   // Monitor camera for finger detection
   useEffect(() => {
     if (scanMode === "camera" && cam.active && !scanning) {
-       // Lower threshold (35 BPM estimate) to trigger start faster
-       if (cam.heartRate > 35) {
+       // Auto-trigger if lens is covered OR if pulse is detected
+       if (cam.isCovered || cam.heartRate > 35) {
           setIsFingerDetected(true);
           setScanning(true);
        }
     }
-  }, [cam.heartRate, cam.active, scanMode, scanning]);
+  }, [cam.heartRate, cam.active, scanMode, scanning, cam.isCovered]);
 
   const stopScan = async () => {
     // Only proceed with report generation if we were actually in the "scanning" state
@@ -146,8 +146,8 @@ export default function BiometricScanner() {
     if (scanMode === "camera") cam.stop();
 
     // DESIRED BEHAVIOR: Do NOT generate report if we terminated before finger detection
-    // or if we have fewer than 10 real samples (prevents mock data generation)
-    if (!wasScanning || readings.length < 10) {
+    // or if we have fewer than 5 real samples (lowered from 10)
+    if (!wasScanning || readings.length < 5) {
       setScanMode("idle");
       return;
     }
