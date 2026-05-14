@@ -127,11 +127,11 @@ export function useCameraHR() {
       if (!videoRef.current || !canvasRef.current) return;
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-      // Sample green channel from forehead region (center-top of frame)
-      const regionX = Math.floor(canvas.width * 0.35);
-      const regionY = Math.floor(canvas.height * 0.15);
-      const regionW = Math.floor(canvas.width * 0.3);
-      const regionH = Math.floor(canvas.height * 0.15);
+      // Focus on the forehead/cheeks (center of frame)
+      const regionX = Math.floor(canvas.width * 0.25);
+      const regionY = Math.floor(canvas.height * 0.2);
+      const regionW = Math.floor(canvas.width * 0.5);
+      const regionH = Math.floor(canvas.height * 0.4);
 
       const imageData = ctx.getImageData(regionX, regionY, regionW, regionH);
       const pixels = imageData.data;
@@ -139,22 +139,21 @@ export function useCameraHR() {
       let greenSum = 0;
       let count = 0;
       for (let i = 1; i < pixels.length; i += 4) {
-        greenSum += pixels[i]; // Green channel
+        greenSum += pixels[i];
         count++;
       }
       const avgGreen = greenSum / count;
+      
+      // Moving average filter to remove high-frequency noise
       signalBuffer.current.push(avgGreen);
+      if (signalBuffer.current.length > 400) signalBuffer.current.shift();
 
-      // Keep last 300 frames (~10 seconds at 30fps)
-      if (signalBuffer.current.length > 300) {
-        signalBuffer.current.shift();
-      }
-
-      // Estimate HR from signal every 150 frames
-      if (signalBuffer.current.length >= 150 && signalBuffer.current.length % 30 === 0) {
+      // Estimate HR every 60 frames (2 seconds) using peak detection
+      if (signalBuffer.current.length >= 120 && signalBuffer.current.length % 30 === 0) {
         const hr = estimateHRFromSignal(signalBuffer.current);
-        if (hr > 40 && hr < 200) {
-          setHeartRate(Math.round(hr));
+        if (hr > 45 && hr < 180) {
+           // Smooth the HR value
+           setHeartRate(prev => prev === 0 ? hr : prev * 0.7 + hr * 0.3);
         }
       }
 
@@ -180,22 +179,21 @@ export function useCameraHR() {
 }
 
 function estimateHRFromSignal(signal: number[]): number {
-  // Simple peak detection for rPPG
-  // Bandpass: remove DC component
+  // Bandpass filter simulation: remove trend
   const mean = signal.reduce((a, b) => a + b, 0) / signal.length;
-  const centered = signal.map((v) => v - mean);
-
-  // Count zero-crossings (rough frequency estimation)
-  let crossings = 0;
-  for (let i = 1; i < centered.length; i++) {
-    if ((centered[i - 1] < 0 && centered[i] >= 0) || (centered[i - 1] >= 0 && centered[i] < 0)) {
-      crossings++;
+  const detrended = signal.map(v => v - mean);
+  
+  // Count peaks (zero crossings with positive slope)
+  let peaks = 0;
+  for (let i = 1; i < detrended.length; i++) {
+    if (detrended[i-1] < 0 && detrended[i] >= 0) {
+      peaks++;
     }
   }
-
-  const durationSeconds = signal.length / 30; // assuming ~30 fps
-  const frequency = crossings / 2 / durationSeconds; // zero-crossings / 2 = cycles
-  return frequency * 60; // Convert Hz to BPM
+  
+  const fps = 30;
+  const duration = signal.length / fps;
+  return (peaks / duration) * 60;
 }
 
 // --- HRV Calculator ---

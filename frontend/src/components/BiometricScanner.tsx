@@ -125,12 +125,11 @@ export default function BiometricScanner() {
     }
   };
 
-  // Monitor camera for finger detection (checking for high red-channel saturation)
+  // Monitor camera for finger detection
   useEffect(() => {
     if (scanMode === "camera" && cam.active && !scanning) {
-       // In a real app, cam.heartRate would be 0 until enough light is blocked
-       // We'll simulate finger detection when the signal starts coming in or via a UI prompt
-       if (cam.heartRate > 0) {
+       // We wait for the first real HR reading before starting the 20s countdown
+       if (cam.heartRate > 45) {
           setIsFingerDetected(true);
           setScanning(true);
        }
@@ -335,6 +334,28 @@ export default function BiometricScanner() {
 
             {scanning && (
               <>
+                {/* Real-time Signal Waveform */}
+                <div className="w-full h-32 mb-10 relative glass rounded-[24px] overflow-hidden border-white/5 bg-black/20">
+                  <div className="absolute inset-0 flex items-center justify-center opacity-10 pointer-events-none">
+                     <span className="text-[40px] font-black italic tracking-widest uppercase">Live_Signal_Node</span>
+                  </div>
+                  <svg className="w-full h-full" preserveAspectRatio="none">
+                    <motion.path
+                      d={readings.length > 5 ? `M ${readings.slice(-30).map((r, i) => `${(i / 30) * 1200},${60 - (r.heartRate - 60) * 2}`).join(" L ")}` : ""}
+                      fill="none"
+                      stroke={scanCondition === "critical" ? "#ff2244" : "#00d4ff"}
+                      strokeWidth="2"
+                      initial={{ pathLength: 0 }}
+                      animate={{ pathLength: 1 }}
+                      className="drop-shadow-[0_0_8px_rgba(0,212,255,0.5)]"
+                    />
+                  </svg>
+                  <div className="absolute top-4 right-4 flex items-center gap-2">
+                     <div className={`w-2 h-2 rounded-full ${scanning ? "bg-v-emerald animate-pulse" : "bg-v-muted"}`} />
+                     <span className="text-[8px] font-mono text-v-muted uppercase">Data_Stream: Primary</span>
+                  </div>
+                </div>
+
                 {/* Scan Progress Bar */}
                 <div className="w-full h-1 bg-white/5 rounded-full mb-12 overflow-hidden">
                    <motion.div 

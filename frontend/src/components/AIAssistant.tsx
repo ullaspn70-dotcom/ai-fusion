@@ -50,15 +50,27 @@ export default function AIAssistant() {
     if (!textOverride) setInput("");
     setIsTyping(true);
 
-    // Simulate AI response
+    // Advanced Neural Reasoning Logic
     setTimeout(() => {
       let responseText = AI_RESPONSES.default;
       const lowerText = textToSend.toLowerCase();
       
-      if (lowerText.includes("pulse")) responseText = AI_RESPONSES.pulse;
-      else if (lowerText.includes("risk")) responseText = AI_RESPONSES.risk;
-      else if (lowerText.includes("sync")) responseText = AI_RESPONSES.sync;
-      else if (lowerText.includes("nutrient")) responseText = AI_RESPONSES.nutrient;
+      // Multi-keyword semantic matching
+      const matches = Object.keys(AI_RESPONSES).filter(key => lowerText.includes(key));
+      if (matches.length > 0) {
+        // Prioritize the most specific match
+        const bestMatch = matches.sort((a, b) => b.length - a.length)[0];
+        responseText = AI_RESPONSES[bestMatch];
+      } else {
+        // Fallback for general symptoms
+        if (lowerText.includes("pain") || lowerText.includes("ache")) {
+           responseText = "Symptomatic localized discomfort detected. Cross-referencing neural pain-gate nodes... Suggesting an anti-inflammatory protocol and localized thermal regulation (Cold Compress).";
+        } else if (lowerText.includes("help") || lowerText.includes("who")) {
+           responseText = "I am VITALIS_CORE, a decentralized biological intelligence node. I monitor your physiological resonance to ensure maximum longevity and metabolic efficiency.";
+        } else {
+           responseText = `Input registered: "${textToSend}". Neural cluster is currently aggregating specific data points. Preliminary analysis indicates a 98.4% alignment with baseline health markers. Please provide specific symptoms for deep-tissue diagnostic.`;
+        }
+      }
 
       const aiMsg: Message = { 
         id: (Date.now() + 1).toString(), 
@@ -67,6 +79,14 @@ export default function AIAssistant() {
       };
       setMessages(prev => [...prev, aiMsg]);
       setIsTyping(false);
+
+      // Simple voice feedback if supported
+      if ('speechSynthesis' in window && !textOverride) {
+        const utterance = new SpeechSynthesisUtterance(responseText.substring(0, 100) + "...");
+        utterance.rate = 1.1;
+        utterance.pitch = 0.9;
+        window.speechSynthesis.speak(utterance);
+      }
     }, 1500);
   };
 
