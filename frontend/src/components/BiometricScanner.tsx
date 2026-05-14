@@ -13,7 +13,8 @@ import {
   Download, 
   Trash2, 
   X,
-  AlertTriangle 
+  AlertTriangle,
+  Fingerprint
 } from "lucide-react";
 import { 
   useBluetoothHR, 
@@ -391,7 +392,9 @@ export default function BiometricScanner() {
                 />
               ))}
             </div>
-          </motion.div>
+          </>
+        )}
+      </motion.div>
         )}
       </AnimatePresence>
 
