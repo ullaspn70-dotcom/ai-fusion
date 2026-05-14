@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, User, Brain, Mic, Sparkles, ChevronRight } from "lucide-react";
+import { Send, User, Brain, Mic, Sparkles, ChevronRight, Loader2 } from "lucide-react";
 
 interface Message {
   id: string;
@@ -10,35 +10,55 @@ interface Message {
   text: string;
 }
 
+const AI_RESPONSES: Record<string, string> = {
+  default: "Analyzing biometric resonance data... Current readings indicate optimal metabolic efficiency. Suggesting 400ml hydration within the next 15 minutes.",
+  pulse: "Cardiac rhythm detected. BPM: 72. Variability: 45ms. Sinus rhythm is consistent. No immediate cardiovascular risk detected.",
+  risk: "Aggregating global health datasets... Neural risk assessment: 2.4%. All systems operating within standard deviations of optimal health.",
+  sync: "Establishing clinical synchronization... Connection stable. Encrypted bio-data transmitted to medical node. Synchronization complete.",
+  nutrient: "Spectral analysis suggest a slight deficiency in Magnesium. Recommend dietary adjustment with leafy greens or specialized supplementation."
+};
+
 export default function AIAssistant() {
   const [messages, setMessages] = useState<Message[]>([
     { id: "1", role: "ai", text: "VITALIS_CORE online. Neural synchronization complete. How can I assist with your physiological optimization today?" }
   ]);
   const [input, setInput] = useState("");
+  const [isTyping, setIsTyping] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages]);
+  }, [messages, isTyping]);
 
-  const handleSend = () => {
-    if (!input.trim()) return;
+  const handleSend = (textOverride?: string) => {
+    const textToSend = textOverride || input;
+    if (!textToSend.trim()) return;
     
-    const userMsg: Message = { id: Date.now().toString(), role: "user", text: input };
+    const userMsg: Message = { id: Date.now().toString(), role: "user", text: textToSend };
     setMessages(prev => [...prev, userMsg]);
-    setInput("");
+    if (!textOverride) setInput("");
+    setIsTyping(true);
 
     // Simulate AI response
     setTimeout(() => {
+      let responseText = AI_RESPONSES.default;
+      const lowerText = textToSend.toLowerCase();
+      
+      if (lowerText.includes("pulse")) responseText = AI_RESPONSES.pulse;
+      else if (lowerText.includes("risk")) responseText = AI_RESPONSES.risk;
+      else if (lowerText.includes("sync")) responseText = AI_RESPONSES.sync;
+      else if (lowerText.includes("nutrient")) responseText = AI_RESPONSES.nutrient;
+
       const aiMsg: Message = { 
         id: (Date.now() + 1).toString(), 
         role: "ai", 
-        text: "Analyzing biometric resonance data... Current readings indicate optimal metabolic efficiency. Suggesting 400ml hydration within the next 15 minutes." 
+        text: responseText
       };
       setMessages(prev => [...prev, aiMsg]);
-    }, 1000);
+      setIsTyping(false);
+    }, 1500);
   };
 
   return (
@@ -77,7 +97,7 @@ export default function AIAssistant() {
             >
               <div className={`max-w-[80%] p-5 rounded-[24px] ${
                 msg.role === "user" 
-                  ? "bg-v-cyan/10 border border-v-cyan/20 text-v-text rounded-tr-none" 
+                  ? "bg-v-cyan/10 border border-v-cyan/20 text-v-text rounded-tr-none shadow-[0_0_20px_rgba(0,212,255,0.05)]" 
                   : "bg-white/[0.03] border border-white/5 text-v-text rounded-tl-none"
               }`}>
                 <p className="text-sm leading-relaxed font-light">{msg.text}</p>
@@ -89,6 +109,18 @@ export default function AIAssistant() {
               </div>
             </motion.div>
           ))}
+          
+          {isTyping && (
+            <motion.div
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="flex justify-start"
+            >
+               <div className="bg-white/[0.03] border border-white/5 p-4 rounded-2xl rounded-tl-none">
+                  <Loader2 className="text-v-cyan animate-spin" size={16} />
+               </div>
+            </motion.div>
+          )}
         </AnimatePresence>
       </div>
 
@@ -104,28 +136,39 @@ export default function AIAssistant() {
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={(e) => e.key === "Enter" && handleSend()}
             placeholder="Describe your physiological state..."
-            className="w-full bg-white/[0.03] border border-white/10 rounded-2xl px-6 py-4 text-sm focus:outline-none focus:border-v-cyan/40 transition-all font-light"
+            className="w-full bg-white/[0.03] border border-white/10 rounded-2xl px-6 py-4 text-sm focus:outline-none focus:border-v-cyan/40 transition-all font-light placeholder:text-v-muted/50"
           />
           <button 
-            onClick={handleSend}
-            className="p-4 rounded-2xl bg-v-cyan text-v-bg hover:scale-105 transition-all shadow-lg"
+            onClick={() => handleSend()}
+            disabled={isTyping}
+            className="p-4 rounded-2xl bg-v-cyan text-v-bg hover:scale-105 active:scale-95 transition-all shadow-lg disabled:opacity-50 disabled:scale-100"
           >
              <Send size={20} />
           </button>
         </div>
         
         <div className="mt-6 flex items-center gap-4 overflow-x-auto pb-2 scrollbar-hide">
-           {["Analyze Pulse", "Risk Prediction", "Clinical Sync", "Nutrient Check"].map((tag) => (
-             <button key={tag} className="flex-shrink-0 px-4 py-2 rounded-xl glass border-white/5 text-[10px] font-mono text-v-muted hover:text-v-cyan hover:border-v-cyan/30 transition-all uppercase tracking-widest flex items-center gap-2 group">
+           {[
+             { label: "Analyze Pulse", key: "pulse" },
+             { label: "Risk Prediction", key: "risk" },
+             { label: "Clinical Sync", key: "sync" },
+             { label: "Nutrient Check", key: "nutrient" }
+           ].map((tag) => (
+             <button 
+               key={tag.key} 
+               onClick={() => handleSend(tag.label)}
+               disabled={isTyping}
+               className="flex-shrink-0 px-4 py-2 rounded-xl glass border-white/5 text-[10px] font-mono text-v-muted hover:text-v-cyan hover:border-v-cyan/30 transition-all uppercase tracking-widest flex items-center gap-2 group disabled:opacity-30"
+             >
                 <Sparkles size={12} className="group-hover:rotate-12 transition-transform" />
-                {tag}
+                {tag.label}
              </button>
            ))}
         </div>
       </div>
 
       {/* Background HUD elements */}
-      <div className="absolute bottom-0 right-0 w-full h-px bg-gradient-to-r from-transparent via-v-cyan/20 to-transparent" />
+      <div className="absolute bottom-0 right-0 w-full h-px bg-gradient-to-r from-transparent via-v-cyan/20 to-transparent shadow-[0_0_20px_rgba(0,212,255,0.2)]" />
     </div>
   );
 }

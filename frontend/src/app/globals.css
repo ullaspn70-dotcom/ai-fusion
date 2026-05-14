@@ -137,3 +137,12 @@ body {
 .animate-float { animation: float 6s ease-in-out infinite; }
 .animate-heartbeat { animation: heartbeat 1.4s ease-in-out infinite; }
 .animate-glow-pulse { animation: glow-pulse 3s ease-in-out infinite; }
+
+/* Utilities */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

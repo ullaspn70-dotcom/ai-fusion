@@ -24,6 +24,7 @@ const EmergencyOverlay = dynamic(() => import("@/components/EmergencyOverlay"), 
 const CursorTrail = dynamic(() => import("@/components/CursorTrail"), { ssr: false });
 const FeatureSection = dynamic(() => import("@/components/FeatureSection"), { ssr: false });
 const HumanBodyScene = dynamic(() => import("@/components/HumanBodyScene"), { ssr: false });
+const BiometricScanner = dynamic(() => import("@/components/BiometricScanner"), { ssr: false });
 
 function BootSequence({ onComplete }: { onComplete: () => void }) {
   const [progress, setProgress] = useState(0);
@@ -229,6 +230,23 @@ export default function Home() {
                  </motion.div>
               </div>
               <HumanBodyScene />
+            </section>
+
+            {/* Real Biometric Scanner System */}
+            <section id="biometrics" className="relative z-10 px-6 py-20 bg-gradient-to-b from-v-bg to-v-cyan/5">
+              <div className="max-w-7xl mx-auto mb-20 text-center">
+                 <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                 >
+                    <h2 className="text-5xl md:text-7xl font-black italic tracking-tighter uppercase mb-6 leading-none">Live <span className="text-glow text-v-cyan font-light not-italic">Biometrics.</span></h2>
+                    <p className="text-v-muted text-xl max-w-2xl mx-auto font-light leading-relaxed">
+                       Connect your actual Bluetooth heart rate monitor or use your camera for real-time pulse detection. Your data never leaves your device.
+                    </p>
+                 </motion.div>
+              </div>
+              <BiometricScanner />
             </section>
 
             <section id="triage" className="relative z-10 px-6 py-40">
