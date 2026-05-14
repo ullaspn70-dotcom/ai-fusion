@@ -147,8 +147,9 @@ export function useCameraHR() {
       }
       const avgGreen = greenSum / count;
       
-      // Auto-trigger when lens is covered (brightness drops significantly)
-      setIsCovered(avgGreen < 60);
+      // Auto-trigger when lens is significantly darkened (finger covering lens)
+      // We use a much lower threshold (25) to avoid false triggers from dim lighting
+      setIsCovered(avgGreen < 25);
 
       // Moving average filter to remove high-frequency noise
       signalBuffer.current.push(avgGreen);

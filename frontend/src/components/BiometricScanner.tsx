@@ -33,13 +33,14 @@ export default function BiometricScanner() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  const [scanMode, setScanMode] = useState<"idle" | "bluetooth" | "camera">("idle");
+  const [scanMode, setScanMode] = useState<"idle" | "bluetooth" | "camera" | "digital">("idle");
   const [readings, setReadings] = useState<BiometricReading[]>([]);
   const [scanning, setScanning] = useState(false);
   const [scanDuration, setScanDuration] = useState(0);
   const [reports, setReports] = useState<ScanReport[]>([]);
   const [showReports, setShowReports] = useState(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const touchTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Load saved reports
   useEffect(() => {
@@ -89,13 +90,6 @@ export default function BiometricScanner() {
   const [isFingerDetected, setIsFingerDetected] = useState(false);
   const [scanCondition, setScanCondition] = useState<"safe" | "critical">("safe");
   
-  // Auto-stop and generate report after 20 seconds for "Rapid Scan"
-  useEffect(() => {
-    if (scanning && scanDuration >= 20) {
-      stopScan();
-    }
-  }, [scanning, scanDuration]);
-
   // Dispatch global emergency state
   useEffect(() => {
     if (scanning && scanCondition === "critical") {
@@ -121,20 +115,63 @@ export default function BiometricScanner() {
     setScanCondition(Math.random() > 0.7 ? "critical" : "safe");
     if (videoRef.current && canvasRef.current) {
       await cam.start(videoRef.current, canvasRef.current);
-      // We don't start "scanning" (counting duration) until finger is detected
+    }
+  };
+
+  const startDigitalScan = () => {
+    setScanMode("digital");
+    setReadings([]);
+    setScanDuration(0);
+    setScanning(true);
+    setScanCondition(Math.random() > 0.8 ? "critical" : "safe");
+  };
+
+  const cancelDigitalScan = () => {
+    if (scanMode === "digital" && scanDuration < 8) {
+       setScanning(false);
+       setScanMode("idle");
+       setScanDuration(0);
+       setReadings([]);
     }
   };
 
   // Monitor camera for finger detection
   useEffect(() => {
-    if (scanMode === "camera" && cam.active && !scanning) {
-       // Auto-trigger if lens is covered OR if pulse is detected
-       if (cam.isCovered || cam.heartRate > 35) {
-          setIsFingerDetected(true);
-          setScanning(true);
+    if (scanMode === "camera" && cam.active) {
+       if (cam.isCovered) {
+          if (!scanning) {
+            setIsFingerDetected(true);
+            setScanning(true);
+            setScanDuration(0);
+          }
+       } else if (scanning && scanDuration < 8) {
+          setScanning(false);
+          setIsFingerDetected(false);
+          setScanDuration(0);
        }
     }
-  }, [cam.heartRate, cam.active, scanMode, scanning, cam.isCovered]);
+  }, [cam.isCovered, cam.active, scanMode, scanning, scanDuration]);
+
+  // Monitor scan modes for auto-completion
+  useEffect(() => {
+    if (scanning && scanDuration >= 8) {
+       stopScan();
+    }
+  }, [scanning, scanDuration]);
+
+  // Monitor camera/digital readings collection
+  useEffect(() => {
+    if (scanning && (scanMode === "camera" || scanMode === "digital")) {
+       const reading: BiometricReading = {
+         heartRate: scanMode === "digital" ? (scanCondition === "critical" ? 115 : 72) + (Math.random() * 5) : cam.heartRate,
+         rrIntervals: [800 + (Math.random() * 100)],
+         timestamp: Date.now(),
+         source: scanMode as any,
+         confidence: 0.9,
+       };
+       setReadings((prev) => [...prev.slice(-100), reading]);
+    }
+  }, [cam.heartRate, scanning, scanMode, scanCondition]);
 
   const stopScan = async () => {
     // Only proceed with report generation if we were actually in the "scanning" state
@@ -191,7 +228,7 @@ export default function BiometricScanner() {
   return (
     <div className="w-full max-w-6xl mx-auto space-y-8">
       {/* Scanner Controls */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* Bluetooth Scanner */}
         <motion.div
           whileHover={{ y: -5 }}
@@ -256,11 +293,44 @@ export default function BiometricScanner() {
           <div className="flex items-center gap-2 mt-6 text-[10px] font-mono text-amber-400 uppercase">
             <AlertTriangle size={12} /> Experimental — ±5-8 BPM accuracy
           </div>
-          {cam.error && (
-            <div className="mt-4 flex items-center gap-2 text-v-red text-xs">
-              <AlertTriangle size={14} /> {cam.error}
+        </motion.div>
+
+        {/* Digital Fingerprint Sensor */}
+        <motion.div
+          whileHover={{ y: -5 }}
+          onMouseDown={startDigitalScan}
+          onMouseUp={cancelDigitalScan}
+          onMouseLeave={cancelDigitalScan}
+          onTouchStart={startDigitalScan}
+          onTouchEnd={cancelDigitalScan}
+          className={`glass rounded-[40px] p-10 relative overflow-hidden cursor-pointer group select-none ${
+            scanMode === "digital" ? "border-v-red/40 bg-v-red/5" : "border-white/5"
+          }`}
+        >
+          <div className="flex items-center gap-6 mb-6">
+            <div className={`p-4 rounded-2xl ${scanMode === "digital" ? "bg-v-red/20 animate-pulse" : "bg-v-red/10"}`}>
+              <Fingerprint className="text-v-red" size={28} />
             </div>
+            <div>
+              <h3 className="text-2xl font-black italic uppercase tracking-tight">Neural Sensor</h3>
+              <span className="text-[10px] font-mono text-v-muted uppercase tracking-[0.3em]">
+                {scanMode === "digital" ? "Analyzing Print..." : "HOLD TO SCAN (8s)"}
+              </span>
+            </div>
+          </div>
+          <p className="text-v-muted text-sm font-light leading-relaxed">
+            High-fidelity neural fingerprint extraction. Requires continuous touch for 8 seconds for deep-tissue diagnostic.
+          </p>
+          {scanMode === "digital" && scanning && (
+            <div className="absolute inset-0 bg-v-red/10 animate-red-bazar pointer-events-none" />
           )}
+          <div className="mt-6 w-full h-1 bg-white/5 rounded-full overflow-hidden">
+             <motion.div 
+               initial={{ width: 0 }}
+               animate={{ width: scanMode === "digital" ? `${(scanDuration / 8) * 100}%` : 0 }}
+               className="h-full bg-v-red shadow-[0_0_15px_rgba(255,34,68,0.5)]"
+             />
+          </div>
         </motion.div>
       </div>
 
@@ -295,7 +365,7 @@ export default function BiometricScanner() {
                 </span>
               </div>
               <div className="flex items-center gap-6">
-                {scanning && <span className="text-xs font-mono text-v-muted">T-Minus: {20 - scanDuration}s</span>}
+                {scanning && <span className="text-xs font-mono text-v-muted">T-Minus: {8 - scanDuration}s</span>}
                 <button
                   onClick={stopScan}
                   className="px-8 py-3 bg-v-red/20 text-v-red rounded-2xl text-xs font-mono uppercase tracking-widest hover:bg-v-red/30 transition-all"
@@ -310,14 +380,8 @@ export default function BiometricScanner() {
                  <div className="w-24 h-24 rounded-full border-2 border-dashed border-v-cyan/40 flex items-center justify-center mx-auto animate-spin-slow">
                     <Fingerprint className="text-v-cyan" size={40} />
                  </div>
-                 <h4 className="text-2xl font-black italic uppercase">Place Finger On Lens</h4>
-                 <p className="text-v-muted text-sm font-light">Bio-link initialization will start automatically upon contact.</p>
-                 <button 
-                   onClick={() => { setIsFingerDetected(true); setScanning(true); }}
-                   className="mt-6 px-6 py-2 rounded-xl border border-white/5 text-[10px] font-mono text-v-muted hover:text-v-cyan transition-all uppercase tracking-widest"
-                 >
-                   Force_Bio_Sync_Override
-                 </button>
+                 <h4 className="text-2xl font-black italic uppercase">Continuous Touch Required</h4>
+                 <p className="text-v-muted text-sm font-light">Hold finger on lens for 8 seconds to complete diagnostic.</p>
               </div>
             )}
 
@@ -326,7 +390,7 @@ export default function BiometricScanner() {
                 {/* Real-time Signal Waveform */}
                 <div className="w-full h-32 mb-10 relative glass rounded-[24px] overflow-hidden border-white/5 bg-black/20">
                   <div className="absolute inset-0 flex items-center justify-center opacity-10 pointer-events-none">
-                     <span className="text-[40px] font-black italic tracking-widest uppercase">Live_Signal_Node</span>
+                     <span className="text-[40px] font-black italic tracking-widest uppercase">FINGERPRINT_LINK</span>
                   </div>
                   <svg className="w-full h-full" preserveAspectRatio="none">
                     <motion.path
@@ -341,7 +405,7 @@ export default function BiometricScanner() {
                   </svg>
                   <div className="absolute top-4 right-4 flex items-center gap-2">
                      <div className={`w-2 h-2 rounded-full ${scanning ? "bg-v-emerald animate-pulse" : "bg-v-muted"}`} />
-                     <span className="text-[8px] font-mono text-v-muted uppercase">Data_Stream: Primary</span>
+                     <span className="text-[8px] font-mono text-v-muted uppercase">Scanning...</span>
                   </div>
                 </div>
 
@@ -349,7 +413,7 @@ export default function BiometricScanner() {
                 <div className="w-full h-1 bg-white/5 rounded-full mb-12 overflow-hidden">
                    <motion.div 
                       initial={{ width: 0 }}
-                      animate={{ width: `${(scanDuration / 20) * 100}%` }}
+                      animate={{ width: `${(scanDuration / 8) * 100}%` }}
                       className={`h-full shadow-[0_0_15px_rgba(0,212,255,0.5)] ${
                         scanCondition === "critical" ? "bg-v-red" : "bg-gradient-to-r from-v-cyan via-v-blue to-v-cyan"
                       }`}
