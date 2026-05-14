@@ -2,12 +2,14 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import HeroSection from "@/components/HeroSection";
-import AIAssistant from "@/components/AIAssistant";
-import HealthDashboard from "@/components/HealthDashboard";
-import EmergencyOverlay from "@/components/EmergencyOverlay";
-import CursorTrail from "@/components/CursorTrail";
-import FeatureSection from "@/components/FeatureSection";
+import dynamic from "next/dynamic";
+
+const HeroSection = dynamic(() => import("@/components/HeroSection"), { ssr: false });
+const AIAssistant = dynamic(() => import("@/components/AIAssistant"), { ssr: false });
+const HealthDashboard = dynamic(() => import("@/components/HealthDashboard"), { ssr: false });
+const EmergencyOverlay = dynamic(() => import("@/components/EmergencyOverlay"), { ssr: false });
+const CursorTrail = dynamic(() => import("@/components/CursorTrail"), { ssr: false });
+const FeatureSection = dynamic(() => import("@/components/FeatureSection"), { ssr: false });
 import { Heart, Brain, Bell, Shield, Activity, Fingerprint, Lock, Loader2, Globe, Cpu } from "lucide-react";
 
 function BootSequence({ onComplete }: { onComplete: () => void }) {
