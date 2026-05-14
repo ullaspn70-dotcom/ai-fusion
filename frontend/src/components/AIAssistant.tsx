@@ -41,6 +41,33 @@ export default function AIAssistant() {
     }
   }, [messages, isTyping]);
 
+  const [isListening, setIsListening] = useState(false);
+
+  const startListening = () => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert("Voice recognition is not supported in this browser. Please use Chrome or Edge.");
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = 'en-US';
+
+    recognition.onstart = () => setIsListening(true);
+    recognition.onend = () => setIsListening(false);
+    recognition.onerror = () => setIsListening(false);
+    
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript;
+      setInput(transcript);
+      handleSend(transcript);
+    };
+
+    recognition.start();
+  };
+
   const handleSend = (textOverride?: string) => {
     const textToSend = textOverride || input;
     if (!textToSend.trim()) return;
@@ -156,8 +183,15 @@ export default function AIAssistant() {
       {/* Input */}
       <div className="p-6 bg-white/[0.02] border-t border-white/5">
         <div className="relative flex items-center gap-3">
-          <button className="p-3 rounded-2xl glass hover:bg-v-cyan/10 text-v-cyan transition-all">
-             <Mic size={20} />
+          <button 
+            onClick={startListening}
+            className={`p-3 rounded-2xl transition-all ${
+              isListening 
+                ? "bg-v-red text-v-bg animate-pulse shadow-[0_0_20px_rgba(255,34,68,0.4)]" 
+                : "glass hover:bg-v-cyan/10 text-v-cyan"
+            }`}
+          >
+             {isListening ? <Mic className="animate-bounce" size={20} /> : <Mic size={20} />}
           </button>
           <input 
             type="text" 
