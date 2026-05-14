@@ -5,14 +5,11 @@ import { Canvas, useFrame } from "@react-three/fiber";
 import { 
   Float, 
   MeshDistortMaterial, 
-  MeshWobbleMaterial, 
   Sphere, 
   Points, 
-  PointMaterial, 
-  useScroll 
+  PointMaterial
 } from "@react-three/drei";
 import * as THREE from "three";
-import { ThreeElements } from "@react-three/fiber";
 
 function NeuralCore() {
   const mesh = useRef<THREE.Mesh>(null!);

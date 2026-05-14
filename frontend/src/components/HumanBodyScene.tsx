@@ -37,6 +37,28 @@ const ORGANS: OrganData[] = [
   { id: "stomach", name: "Energy Reactor", pos: [-0.2, 0.4, 0.2], color: "#0066ff", health: 65, risk: "Moderate", desc: "Digestive acidity spike detected. Nutritional absorption efficiency decreased.", icon: Droplets },
 ];
 
+
+declare global {
+  namespace React {
+    namespace JSX {
+      // eslint-disable-next-line @typescript-eslint/no-empty-interface
+      interface IntrinsicElements {
+        ambientLight: any;
+        pointLight: any;
+        spotLight: any;
+        mesh: any;
+        group: any;
+        sphereGeometry: any;
+        cylinderGeometry: any;
+        ringGeometry: any;
+        meshStandardMaterial: any;
+        meshBasicMaterial: any;
+        fog: any;
+      }
+    }
+  }
+}
+
 function OrganNode({ organ, isSelected, onClick }: { organ: OrganData, isSelected: boolean, onClick: () => void }) {
   const mesh = useRef<THREE.Mesh>(null!);
   const [hovered, setHovered] = useState(false);
@@ -53,7 +75,7 @@ function OrganNode({ organ, isSelected, onClick }: { organ: OrganData, isSelecte
       <Sphere 
         ref={mesh} 
         args={[0.15, 32, 32]} 
-        onClick={(e) => { e.stopPropagation(); onClick(); }}
+        onClick={(e: any) => { e.stopPropagation(); onClick(); }}
         onPointerOver={() => setHovered(true)}
         onPointerOut={() => setHovered(false)}
       >
