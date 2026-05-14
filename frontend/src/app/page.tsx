@@ -23,6 +23,7 @@ const HealthDashboard = dynamic(() => import("@/components/HealthDashboard"), { 
 const EmergencyOverlay = dynamic(() => import("@/components/EmergencyOverlay"), { ssr: false });
 const CursorTrail = dynamic(() => import("@/components/CursorTrail"), { ssr: false });
 const FeatureSection = dynamic(() => import("@/components/FeatureSection"), { ssr: false });
+const HumanBodyScene = dynamic(() => import("@/components/HumanBodyScene"), { ssr: false });
 
 function BootSequence({ onComplete }: { onComplete: () => void }) {
   const [progress, setProgress] = useState(0);
@@ -211,6 +212,24 @@ export default function Home() {
             <div id="features">
               <FeatureSection />
             </div>
+
+            {/* 3D Human Body Diagnostic System */}
+            <section id="diagnostics" className="relative z-10 px-6 py-40">
+              <div className="max-w-7xl mx-auto mb-20 text-center">
+                 <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                 >
+                    <h2 className="text-6xl md:text-8xl font-black italic tracking-tighter uppercase mb-6 leading-none">Anatomical <span className="text-glow text-v-cyan font-light not-italic">Intelligence.</span></h2>
+                    <p className="text-v-muted text-xl max-w-2xl mx-auto font-light leading-relaxed">
+                       Interact with the holographic anatomical model to initiate deep-tissue scans 
+                       and neural-linked organ diagnostics.
+                    </p>
+                 </motion.div>
+              </div>
+              <HumanBodyScene />
+            </section>
 
             <section id="triage" className="relative z-10 px-6 py-40">
               <div className="max-w-7xl mx-auto flex flex-col lg:flex-row gap-20 items-center">
