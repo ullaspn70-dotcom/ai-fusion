@@ -14,7 +14,8 @@ import {
   Trash2, 
   X,
   AlertTriangle,
-  Fingerprint
+  Fingerprint,
+  ShieldCheck
 } from "lucide-react";
 import { 
   useBluetoothHR, 
@@ -39,6 +40,7 @@ export default function BiometricScanner() {
   const [scanDuration, setScanDuration] = useState(0);
   const [reports, setReports] = useState<ScanReport[]>([]);
   const [showReports, setShowReports] = useState(false);
+  const [showToast, setShowToast] = useState(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const touchTimerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -162,14 +164,18 @@ export default function BiometricScanner() {
   // Monitor camera/digital readings collection
   useEffect(() => {
     if (scanning && (scanMode === "camera" || scanMode === "digital")) {
+       const hrValue = scanMode === "digital" ? (scanCondition === "critical" ? 115 : 72) + (Math.random() * 5) : cam.heartRate;
        const reading: BiometricReading = {
-         heartRate: scanMode === "digital" ? (scanCondition === "critical" ? 115 : 72) + (Math.random() * 5) : cam.heartRate,
+         heartRate: hrValue,
          rrIntervals: [800 + (Math.random() * 100)],
          timestamp: Date.now(),
          source: scanMode as any,
          confidence: 0.9,
        };
        setReadings((prev) => [...prev.slice(-100), reading]);
+
+       // Dispatch global heart rate update for 3D model synchronization
+       window.dispatchEvent(new CustomEvent('v-heartrate-update', { detail: { heartRate: hrValue } }));
     }
   }, [cam.heartRate, scanning, scanMode, scanCondition]);
 
@@ -212,6 +218,10 @@ export default function BiometricScanner() {
     const updated = await getAllReports();
     setReports(updated);
     setScanMode("idle");
+    
+    // Show success toast
+    setShowToast(true);
+    setTimeout(() => setShowToast(false), 3000);
   };
 
   const handleDeleteReport = async (id: string) => {
@@ -272,26 +282,36 @@ export default function BiometricScanner() {
         <motion.div
           whileHover={{ y: -5 }}
           className={`glass rounded-[40px] p-10 relative overflow-hidden cursor-pointer group ${
-            scanMode === "camera" ? "border-v-emerald/40" : "border-white/5"
+            scanMode === "camera" ? "border-v-emerald/40 bg-v-emerald/5" : "border-white/5"
           }`}
           onClick={!scanning ? startCamera : undefined}
         >
+          {scanMode === "camera" && scanning && (
+             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div className="w-20 h-20 bg-v-emerald/20 rounded-full animate-ping" />
+                <div className="absolute w-32 h-32 bg-v-emerald/10 rounded-full animate-ping delay-75" />
+             </div>
+          )}
           <div className="flex items-center gap-6 mb-6">
-            <div className="p-4 rounded-2xl bg-v-emerald/10">
+            <div className={`p-4 rounded-2xl ${scanMode === "camera" ? "bg-v-emerald/20 animate-pulse" : "bg-v-emerald/10"}`}>
               <Camera className="text-v-emerald" size={28} />
             </div>
             <div>
-              <h3 className="text-2xl font-black italic uppercase tracking-tight">Camera rPPG</h3>
+              <h3 className="text-2xl font-black italic uppercase tracking-tight">Camera Link</h3>
               <span className="text-[10px] font-mono text-v-muted uppercase tracking-[0.3em]">
-                {cam.active ? "Scanning face..." : "Tap to use camera pulse detection"}
+                {cam.active ? (cam.isCovered ? "Holding Bio-Link..." : "Waiting for Finger (8s)") : "Tap to activate rPPG"}
               </span>
             </div>
           </div>
           <p className="text-v-muted text-sm font-light leading-relaxed">
-            Uses your camera to detect subtle facial blood flow changes and estimate heart rate — no wearable needed.
+            Automatic Fingerprint detection. Hold your finger on the camera lens for 8 seconds to generate report.
           </p>
-          <div className="flex items-center gap-2 mt-6 text-[10px] font-mono text-amber-400 uppercase">
-            <AlertTriangle size={12} /> Experimental — ±5-8 BPM accuracy
+          <div className="mt-6 w-full h-1 bg-white/5 rounded-full overflow-hidden">
+             <motion.div 
+               initial={{ width: 0 }}
+               animate={{ width: scanMode === "camera" && scanning ? `${(scanDuration / 8) * 100}%` : 0 }}
+               className="h-full bg-v-emerald shadow-[0_0_15px_rgba(0,255,136,0.5)]"
+             />
           </div>
         </motion.div>
 
@@ -307,6 +327,12 @@ export default function BiometricScanner() {
             scanMode === "digital" ? "border-v-red/40 bg-v-red/5" : "border-white/5"
           }`}
         >
+          {scanMode === "digital" && scanning && (
+             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div className="w-20 h-20 bg-v-red/20 rounded-full animate-ping" />
+                <div className="absolute w-32 h-32 bg-v-red/10 rounded-full animate-ping delay-75" />
+             </div>
+          )}
           <div className="flex items-center gap-6 mb-6">
             <div className={`p-4 rounded-2xl ${scanMode === "digital" ? "bg-v-red/20 animate-pulse" : "bg-v-red/10"}`}>
               <Fingerprint className="text-v-red" size={28} />
@@ -321,9 +347,6 @@ export default function BiometricScanner() {
           <p className="text-v-muted text-sm font-light leading-relaxed">
             High-fidelity neural fingerprint extraction. Requires continuous touch for 8 seconds for deep-tissue diagnostic.
           </p>
-          {scanMode === "digital" && scanning && (
-            <div className="absolute inset-0 bg-v-red/10 animate-red-bazar pointer-events-none" />
-          )}
           <div className="mt-6 w-full h-1 bg-white/5 rounded-full overflow-hidden">
              <motion.div 
                initial={{ width: 0 }}
@@ -333,6 +356,26 @@ export default function BiometricScanner() {
           </div>
         </motion.div>
       </div>
+
+      {/* Success Toast Notification */}
+      <AnimatePresence>
+        {showToast && (
+          <motion.div
+            initial={{ opacity: 0, y: 50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[100] glass px-10 py-5 rounded-full border-v-emerald/20 flex items-center gap-4 shadow-[0_20px_50px_rgba(0,0,0,0.5)]"
+          >
+             <div className="w-8 h-8 rounded-full bg-v-emerald/20 flex items-center justify-center">
+                <ShieldCheck className="text-v-emerald" size={18} />
+             </div>
+             <div className="text-left">
+                <span className="block text-xs font-black italic uppercase text-v-emerald">Medical Report Stored</span>
+                <span className="block text-[8px] font-mono text-v-muted uppercase tracking-widest">Archive_ID: {reports[0]?.id.split('-')[0]}...</span>
+             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Hidden video/canvas for camera rPPG */}
       <video ref={videoRef} className="hidden" playsInline muted />

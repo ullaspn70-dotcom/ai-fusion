@@ -125,22 +125,30 @@ export default function AIAssistant() {
 
   return (
     <div className="glass rounded-[40px] flex flex-col h-[600px] w-full max-w-2xl mx-auto overflow-hidden shadow-2xl relative">
-      {/* Header */}
-      <div className="p-6 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
+      <div className="p-8 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
         <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-v-cyan/10 flex items-center justify-center relative group">
-             <Brain className="text-v-cyan group-hover:scale-110 transition-transform" size={24} />
-             <div className="absolute inset-0 bg-v-cyan blur-xl opacity-20" />
+          <div className="w-14 h-14 rounded-2xl bg-v-cyan/10 flex items-center justify-center relative group">
+             <Brain className="text-v-cyan group-hover:scale-110 transition-transform animate-pulse" size={28} />
+             <div className="absolute inset-0 bg-v-cyan blur-2xl opacity-20" />
+             <div className="absolute -top-1 -right-1 w-4 h-4 bg-v-emerald rounded-full border-4 border-[#0a0a0f] shadow-[0_0_15px_rgba(0,255,136,0.6)]" />
           </div>
           <div>
-            <h3 className="font-bold tracking-tight">VITALIS_CORE_AI</h3>
-            <span className="text-[9px] font-mono text-v-emerald uppercase tracking-widest">Active_Neural_Link</span>
+            <h3 className="text-2xl font-black italic tracking-tighter uppercase leading-none">Vitalis<span className="text-v-cyan font-light not-italic">CORE</span></h3>
+            <div className="flex items-center gap-2 mt-1">
+               <div className="w-1.5 h-1.5 rounded-full bg-v-emerald animate-pulse" />
+               <span className="text-[9px] font-mono text-v-muted uppercase tracking-[0.3em]">Neural_Sync: Online (98.4%)</span>
+            </div>
           </div>
         </div>
-        <div className="flex gap-2">
-           <div className="w-2 h-2 rounded-full bg-v-emerald animate-pulse" />
-           <div className="w-2 h-2 rounded-full bg-v-cyan animate-pulse delay-75" />
-           <div className="w-2 h-2 rounded-full bg-v-blue animate-pulse delay-150" />
+        <div className="flex gap-1.5 items-end h-6">
+           {[1, 2, 3, 4, 5].map(i => (
+             <motion.div 
+               key={i} 
+               animate={{ height: [8, 24, 12, 20, 8] }}
+               transition={{ repeat: Infinity, duration: 1.5, delay: i * 0.1 }}
+               className="w-1 bg-v-cyan/30 rounded-full" 
+             />
+           ))}
         </div>
       </div>
 

@@ -59,14 +59,17 @@ declare global {
   }
 }
 
-function OrganNode({ organ, isSelected, onClick }: { organ: OrganData, isSelected: boolean, onClick: () => void }) {
+function OrganNode({ organ, isSelected, onClick, pulseRate = 60 }: { organ: OrganData, isSelected: boolean, onClick: () => void, pulseRate?: number }) {
   const mesh = useRef<THREE.Mesh>(null!);
   const [hovered, setHovered] = useState(false);
 
   useFrame((state) => {
     const t = state.clock.getElapsedTime();
     if (mesh.current) {
-      mesh.current.scale.setScalar(isSelected ? 1.5 + Math.sin(t * 3) * 0.1 : 1 + (hovered ? 0.2 : 0));
+      // Dynamic pulsing based on real heart rate (BPM)
+      const pulseSpeed = organ.id === "heart" ? (pulseRate / 60) * 8 : 2;
+      const pulseScale = isSelected ? 1.5 + Math.sin(t * pulseSpeed) * 0.15 : 1 + (hovered ? 0.2 : 0);
+      mesh.current.scale.setScalar(pulseScale);
     }
   });
 
@@ -82,7 +85,7 @@ function OrganNode({ organ, isSelected, onClick }: { organ: OrganData, isSelecte
         <meshStandardMaterial
           color={organ.color}
           emissive={organ.color}
-          emissiveIntensity={isSelected || hovered ? 5 : 1}
+          emissiveIntensity={isSelected || hovered ? 10 : 2}
           transparent
           opacity={0.8}
         />
@@ -106,44 +109,61 @@ function StylizedHumanBody() {
   useFrame((state) => {
     const t = state.clock.getElapsedTime();
     group.current.position.y = Math.sin(t / 2) / 10;
+    group.current.rotation.y = Math.sin(t / 4) * 0.2;
   });
 
   return (
     <group ref={group}>
+      {/* Cinematic Aura */}
+      <Sphere args={[2, 64, 64]}>
+         <meshStandardMaterial color="#00d4ff" wireframe transparent opacity={0.03} />
+      </Sphere>
+      
       {/* Head */}
       <mesh position={[0, 1.8, 0]}>
         <sphereGeometry args={[0.3, 32, 32]} />
-        <meshStandardMaterial color="#00d4ff" wireframe transparent opacity={0.1} />
+        <meshStandardMaterial color="#00d4ff" wireframe transparent opacity={0.2} />
       </mesh>
       {/* Torso */}
       <mesh position={[0, 0.8, 0]}>
         <cylinderGeometry args={[0.4, 0.3, 1.4, 32]} />
-        <meshStandardMaterial color="#00d4ff" wireframe transparent opacity={0.1} />
+        <meshStandardMaterial color="#00d4ff" wireframe transparent opacity={0.2} />
       </mesh>
       {/* Arms */}
       <mesh position={[0.6, 1.0, 0]} rotation={[0, 0, -0.3]}>
         <cylinderGeometry args={[0.1, 0.08, 1.2, 32]} />
-        <meshStandardMaterial color="#00d4ff" wireframe transparent opacity={0.1} />
+        <meshStandardMaterial color="#00d4ff" wireframe transparent opacity={0.2} />
       </mesh>
       <mesh position={[-0.6, 1.0, 0]} rotation={[0, 0, 0.3]}>
         <cylinderGeometry args={[0.1, 0.08, 1.2, 32]} />
-        <meshStandardMaterial color="#00d4ff" wireframe transparent opacity={0.1} />
+        <meshStandardMaterial color="#00d4ff" wireframe transparent opacity={0.2} />
       </mesh>
       {/* Legs */}
       <mesh position={[0.2, -0.5, 0]}>
         <cylinderGeometry args={[0.12, 0.08, 1.5, 32]} />
-        <meshStandardMaterial color="#00d4ff" wireframe transparent opacity={0.1} />
+        <meshStandardMaterial color="#00d4ff" wireframe transparent opacity={0.2} />
       </mesh>
       <mesh position={[-0.2, -0.5, 0]}>
         <cylinderGeometry args={[0.12, 0.08, 1.5, 32]} />
-        <meshStandardMaterial color="#00d4ff" wireframe transparent opacity={0.1} />
+        <meshStandardMaterial color="#00d4ff" wireframe transparent opacity={0.2} />
       </mesh>
     </group>
   );
 }
 
-export default function HumanBodyScene() {
+export default function HumanBodyScene({ liveHeartRate: initialHR = 72 }: { liveHeartRate?: number }) {
   const [selectedOrgan, setSelectedOrgan] = useState<OrganData | null>(null);
+  const [currentHR, setCurrentHR] = useState(initialHR);
+
+  useEffect(() => {
+    const handleHRUpdate = (e: any) => {
+      if (e.detail?.heartRate) {
+        setCurrentHR(e.detail.heartRate);
+      }
+    };
+    window.addEventListener('v-heartrate-update', handleHRUpdate);
+    return () => window.removeEventListener('v-heartrate-update', handleHRUpdate);
+  }, []);
 
   return (
     <div className="relative w-full h-full flex flex-col lg:flex-row items-center justify-center p-6 gap-12">
@@ -176,6 +196,7 @@ export default function HumanBodyScene() {
                 organ={organ} 
                 isSelected={selectedOrgan?.id === organ.id}
                 onClick={() => setSelectedOrgan(organ)}
+                pulseRate={currentHR}
               />
             ))}
           </PresentationControls>
