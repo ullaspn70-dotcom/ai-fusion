@@ -181,7 +181,7 @@ export function useCameraHR() {
     setHeartRate(0);
   }, []);
 
-  return { start, stop, active, heartRate, error };
+  return { start, stop, active, heartRate, error, isCovered };
 }
 
 function estimateHRFromSignal(signal: number[]): number {
