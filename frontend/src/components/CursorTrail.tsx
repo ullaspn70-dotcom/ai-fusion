@@ -42,10 +42,9 @@ export default function CursorTrail() {
           x: cursorXSpring, 
           y: cursorYSpring, 
           translateX: "-50%", 
-          translateY: "-50%",
-          scale: [1, 1.1, 1],
+          translateY: "-50%"
         }}
-        animate={{ rotate: 360 }}
+        animate={{ rotate: 360, scale: [1, 1.1, 1] }}
         transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
       >
          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-px h-2 bg-vitalis-cyan" />
