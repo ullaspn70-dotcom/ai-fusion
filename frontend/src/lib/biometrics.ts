@@ -92,6 +92,7 @@ export function useCameraHR() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [heartRate, setHeartRate] = useState(0);
   const [active, setActive] = useState(false);
+  const activeRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const signalBuffer = useRef<number[]>([]);
   const frameRef = useRef<number>(0);
@@ -107,6 +108,7 @@ export function useCameraHR() {
       });
       video.srcObject = stream;
       await video.play();
+      activeRef.current = true;
       setActive(true);
       signalBuffer.current = [];
       processFrames();
@@ -118,7 +120,7 @@ export function useCameraHR() {
   const processFrames = useCallback(() => {
     const video = videoRef.current;
     const canvas = canvasRef.current;
-    if (!video || !canvas || !active) return;
+    if (!video || !canvas || !activeRef.current) return;
 
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
@@ -164,14 +166,14 @@ export function useCameraHR() {
   }, [active]);
 
   const stop = useCallback(() => {
+    activeRef.current = false;
     setActive(false);
-    if (frameRef.current) {
-      cancelAnimationFrame(frameRef.current);
-    }
-    if (videoRef.current?.srcObject) {
-      (videoRef.current.srcObject as MediaStream).getTracks().forEach((t) => t.stop());
+    if (videoRef.current && videoRef.current.srcObject) {
+      const stream = videoRef.current.srcObject as MediaStream;
+      stream.getTracks().forEach((track) => track.stop());
       videoRef.current.srcObject = null;
     }
+    if (frameRef.current) cancelAnimationFrame(frameRef.current);
     setHeartRate(0);
   }, []);
 
@@ -179,21 +181,41 @@ export function useCameraHR() {
 }
 
 function estimateHRFromSignal(signal: number[]): number {
-  // Bandpass filter simulation: remove trend
+  if (signal.length < 60) return 0;
+  
+  // Detrend the signal
   const mean = signal.reduce((a, b) => a + b, 0) / signal.length;
   const detrended = signal.map(v => v - mean);
   
-  // Count peaks (zero crossings with positive slope)
-  let peaks = 0;
-  for (let i = 1; i < detrended.length; i++) {
-    if (detrended[i-1] < 0 && detrended[i] >= 0) {
-      peaks++;
+  // Autocorrelation to find periodic signal in noise
+  const n = detrended.length;
+  const acf = new Array(Math.floor(n / 2)).fill(0);
+  
+  for (let lag = 0; lag < acf.length; lag++) {
+    for (let i = 0; i < n - lag; i++) {
+      acf[lag] += detrended[i] * detrended[i + lag];
     }
   }
   
+  // Find the first peak in ACF within the HR range (45 - 180 BPM)
+  // 30 fps -> 45 BPM = 40 frames lag, 180 BPM = 10 frames lag
+  let maxAcf = -Infinity;
+  let bestLag = 0;
+  
+  for (let lag = 10; lag < Math.min(acf.length, 45); lag++) {
+    // Check if it's a peak
+    if (acf[lag] > acf[lag-1] && acf[lag] > acf[lag+1]) {
+      if (acf[lag] > maxAcf) {
+        maxAcf = acf[lag];
+        bestLag = lag;
+      }
+    }
+  }
+  
+  if (bestLag === 0) return 0;
+  
   const fps = 30;
-  const duration = signal.length / fps;
-  return (peaks / duration) * 60;
+  return (fps / bestLag) * 60;
 }
 
 // --- HRV Calculator ---

@@ -128,8 +128,8 @@ export default function BiometricScanner() {
   // Monitor camera for finger detection
   useEffect(() => {
     if (scanMode === "camera" && cam.active && !scanning) {
-       // We wait for the first real HR reading before starting the 20s countdown
-       if (cam.heartRate > 45) {
+       // Lower threshold (35 BPM estimate) to trigger start faster
+       if (cam.heartRate > 35) {
           setIsFingerDetected(true);
           setScanning(true);
        }
@@ -137,41 +137,24 @@ export default function BiometricScanner() {
   }, [cam.heartRate, cam.active, scanMode, scanning]);
 
   const stopScan = async () => {
+    // Only proceed with report generation if we were actually in the "scanning" state
+    const wasScanning = scanning;
+    
     setScanning(false);
     setIsFingerDetected(false);
     if (scanMode === "bluetooth") ble.disconnect();
     if (scanMode === "camera") cam.stop();
 
-    // If we have very few readings (e.g. rapid scan simulation), generate a plausible set
-    let finalReadings = [...readings];
-    if (finalReadings.length < 10) {
-      // High-entropy seed factor
-      const seed = Date.now() % 1000;
-      const hour = new Date().getHours();
-      
-      // Base metrics based on scanCondition
-      let baseHR = (scanCondition === "critical") 
-        ? 110 + (Math.random() * 40) // High BPM for critical
-        : ((hour > 22 || hour < 6) ? 52 : 68) + (Math.random() * 25) + (seed / 200);
-      
-      for (let i = 0; i < 20; i++) {
-        // Add "neural noise" to every single reading to ensure zero repetition
-        const noise = (Math.random() - 0.5) * 12;
-        const microNoise = Math.random() * 0.99;
-        
-        finalReadings.push({
-          heartRate: Math.round(baseHR + noise + microNoise),
-          rrIntervals: [Math.round((60000 / (baseHR + noise)) + (Math.random() * 200 - 100))],
-          timestamp: Date.now() - (20 - i) * 1000 + Math.floor(Math.random() * 100),
-          source: scanMode as any,
-          confidence: 0.8 + (Math.random() * 0.15)
-        });
-      }
+    // DESIRED BEHAVIOR: Do NOT generate report if we terminated before finger detection
+    // or if we have fewer than 10 real samples (prevents mock data generation)
+    if (!wasScanning || readings.length < 10) {
+      setScanMode("idle");
+      return;
     }
 
-    // Save report
-    const hrs = finalReadings.map((r) => r.heartRate);
-    const allRR = finalReadings.flatMap((r) => r.rrIntervals);
+    // Save report only for REAL data sessions
+    const hrs = readings.map((r) => r.heartRate);
+    const allRR = readings.flatMap((r) => r.rrIntervals);
     const report: ScanReport = {
       id: crypto.randomUUID(),
       date: new Date().toISOString(),
@@ -183,8 +166,8 @@ export default function BiometricScanner() {
         hrs.reduce((a, b) => a + b, 0) / hrs.length,
         computeHRV(allRR)
       ),
-      duration: Math.max(scanDuration, 20),
-      readings: finalReadings,
+      duration: scanDuration,
+      readings,
       selectedOrgan: null,
       organHealth: {},
     };
@@ -329,6 +312,12 @@ export default function BiometricScanner() {
                  </div>
                  <h4 className="text-2xl font-black italic uppercase">Place Finger On Lens</h4>
                  <p className="text-v-muted text-sm font-light">Bio-link initialization will start automatically upon contact.</p>
+                 <button 
+                   onClick={() => { setIsFingerDetected(true); setScanning(true); }}
+                   className="mt-6 px-6 py-2 rounded-xl border border-white/5 text-[10px] font-mono text-v-muted hover:text-v-cyan transition-all uppercase tracking-widest"
+                 >
+                   Force_Bio_Sync_Override
+                 </button>
               </div>
             )}
 
